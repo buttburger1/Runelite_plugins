@@ -1,0 +1,239 @@
+//BY BUTTBURGER FOR BOUNTY HUNTER 5/26/2023
+//PLUGINS BORROWED AND REARRANGED: npchighlight, playerindicators, screenshot
+package net.runelite.client.plugins.myPlayerDeathMarker;
+
+
+
+import com.google.inject.Provides;
+
+import javax.annotation.Nullable;
+import javax.inject.Inject;
+
+
+import lombok.*;
+import net.runelite.api.*;
+import net.runelite.api.coords.LocalPoint;
+import net.runelite.api.events.*;
+import net.runelite.client.events.ConfigChanged;
+
+import net.runelite.client.eventbus.Subscribe;
+import net.runelite.client.events.ConfigChanged;
+import net.runelite.client.game.AgilityShortcut;
+import net.runelite.client.game.WorldService;
+import net.runelite.client.plugins.Plugin;
+import net.runelite.client.plugins.PluginDescriptor;
+import net.runelite.client.config.ConfigManager;
+//import net.runelite.client.plugins.agility.Obstacle;
+import net.runelite.client.plugins.entityhider.EntityHiderConfig;
+import net.runelite.client.plugins.fps.FpsDrawListener;
+import net.runelite.client.plugins.myGroundMarkerFill.myGroundMarkerFillConfig;
+import net.runelite.client.plugins.myGroundMarkerFill.myGroundMarkerFillOverlay;
+import net.runelite.client.ui.overlay.Overlay;
+import net.runelite.client.util.WorldUtil;
+import net.runelite.http.api.worlds.World;
+import net.runelite.http.api.worlds.WorldResult;
+
+import com.google.inject.Provides;
+import javax.inject.Inject;
+import net.runelite.client.config.ConfigManager;
+import net.runelite.client.plugins.Plugin;
+import net.runelite.client.plugins.PluginDescriptor;
+import net.runelite.client.ui.overlay.OverlayManager;
+
+import java.awt.*;
+import java.time.Instant;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+
+
+
+
+
+
+import com.google.inject.Provides;
+import javax.inject.Inject;
+
+import lombok.Getter;
+import lombok.extern.slf4j.Slf4j;
+import net.runelite.api.Client;
+import net.runelite.api.ItemID;
+import net.runelite.api.Player;
+import net.runelite.api.TileItem;
+import net.runelite.api.MenuAction;
+import net.runelite.api.coords.WorldPoint;
+import net.runelite.api.events.ItemDespawned;
+import net.runelite.api.events.ItemSpawned;
+import net.runelite.client.config.ConfigManager;
+import net.runelite.client.eventbus.Subscribe;
+import net.runelite.client.events.OverlayMenuClicked;
+import net.runelite.client.plugins.Plugin;
+import net.runelite.client.plugins.PluginDescriptor;
+import net.runelite.client.ui.overlay.OverlayManager;
+import net.runelite.client.ui.overlay.OverlayMenuEntry;
+
+
+
+@PluginDescriptor(
+        name = "Custom Death Marker",
+        description = "Highlight player deaths",
+        tags = {"highlight", "overlay"},
+        enabledByDefault = false
+)
+
+
+public class myPlayerDeathMarkerPlugin extends Plugin
+{
+    @Getter
+    private final List<Tile> marksOfGrace = new ArrayList<>();
+
+    private long lastTickMillis;
+
+    @Getter(AccessLevel.PACKAGE)
+    private Instant lastTickUpdate;
+
+    //@Getter(AccessLevel.PACKAGE)
+    //private final Map<Integer, MemorizedPlayer> deadNpcsToDisplay = new HashMap<>();
+
+
+
+    @Inject
+    private Client client;
+
+
+
+    @Inject
+    private OverlayManager overlayManager;
+
+    @Inject
+    private myPlayerDeathMarkerOverlay overlay;
+
+    @Provides
+    myPlayerDeathMarkerConfig provideConfig(ConfigManager configManager)
+    {
+        return configManager.getConfig(myPlayerDeathMarkerConfig.class);
+    }
+
+    @Override
+    protected void startUp() throws Exception
+    {
+        overlayManager.add(overlay);
+    }
+
+    @Override
+    protected void shutDown() throws Exception
+    {
+        overlayManager.remove(overlay);
+    }
+
+
+    @Subscribe
+    public void onItemSpawned(ItemSpawned itemSpawned)
+    {
+        final TileItem item = itemSpawned.getItem();
+        if (item.getId() == ItemID.MARK_OF_GRACE)
+        {
+            WorldPoint wp = itemSpawned.getTile().getWorldLocation();
+            Player player = client.getLocalPlayer();
+            if (player != null)
+            {
+                if (wp.equals(player.getWorldLocation()))
+                {
+                    //mogSession.addIgnoreTile(wp);
+                }
+                else
+                {
+                    //mogSession.addMarkTile(wp, item.getQuantity());
+                    //mSession.addMarkTest(wp);
+                    overlay.reloadScan(itemSpawned);
+                }
+            }
+            // mSession.addMarkTest(wp);
+        }
+    }
+
+
+    @Subscribe
+    public void onItemDespawned(ItemDespawned itemDespawned)
+    {
+        final TileItem item = itemDespawned.getItem();
+        if (item.getId() == ItemID.MARK_OF_GRACE)
+        {
+            WorldPoint wp = itemDespawned.getTile().getWorldLocation();
+            Player player = client.getLocalPlayer();
+            if (player != null)
+            {
+                if (wp.equals(player.getWorldLocation()))
+                {
+                    //mogSession.removeIgnoreTile(wp);
+                }
+                //mogSession.removeMarkTile(wp);
+                overlay.graceDespawned();
+            }
+        }
+    }
+
+
+
+    @Subscribe
+    public void onActorDeath(ActorDeath actorDeath)//Graphics2D graphics
+    {
+        Actor actor = actorDeath.getActor();
+        if (actor instanceof Player)
+        {
+            Player player = (Player) actor;
+
+            /*
+            if (player == client.getLocalPlayer() && config.screenshotPlayerDeath())
+            {
+                takeScreenshot("Death", SD_DEATHS);
+            }
+            else if (player != client.getLocalPlayer()
+                    && player.getCanvasTilePoly() != null
+                    && (((player.isFriendsChatMember() || player.isFriend()) && config.screenshotFriendDeath())
+                    || (player.isClanMember() && config.screenshotClanDeath())))
+            {
+                //takeScreenshot("Death " + player.getName(), SD_DEATHS);
+            }
+            */
+
+            if (player != client.getLocalPlayer())
+            {
+                final LocalPoint playerTemp = player.getLocalLocation();
+                overlay.deathCounter(player, playerTemp);
+            }
+        }
+    }
+
+
+    @Subscribe
+    public void onGameTick(GameTick event)
+    {
+        //removeOldHighlightedRespawns();
+        //validateSpawnedNpcs();
+        lastTickUpdate = Instant.now();
+        //lastPlayerLocation = client.getLocalPlayer().getWorldLocation();
+    }
+
+
+    @Subscribe
+    public void onGameStateChanged(GameStateChanged event)
+    {
+        if (event.getGameState() == GameState.LOGIN_SCREEN ||
+                event.getGameState() == GameState.HOPPING)
+        {
+            overlay.resetLoop();
+            //highlightedNpcs.clear();
+            //deadNpcsToDisplay.clear();
+            //memorizedPlayer.forEach((id, player) -> player.setDiedOnTick(-1));
+            //lastPlayerLocation = null;
+            //skipNextSpawnCheck = true;
+        }
+    }
+
+
+}
+
+
