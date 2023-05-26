@@ -1,0 +1,66 @@
+//BY BUTTBURGER 2023 MARKER FILL FOR AGILITY SEERS VILLAGE COURSE
+//PLUGINS BORROWED AND REARRANGED: agility, groundmarkers
+package net.runelite.client.plugins.myGroundMarkerFill;
+
+
+import net.runelite.client.config.Config;
+import net.runelite.client.config.ConfigGroup;
+import net.runelite.client.config.ConfigItem;
+
+
+import java.awt.Color;
+import net.runelite.client.config.Alpha;
+import net.runelite.client.config.Config;
+import net.runelite.client.config.ConfigGroup;
+import net.runelite.client.config.ConfigItem;
+
+
+
+@ConfigGroup("myGroundMarkerFill")
+public interface myGroundMarkerFillConfig extends Config
+{
+    @Alpha
+    @ConfigItem(
+            keyName = "highlightDestinationColor",
+            name = "Color of current destination highlighting",
+            description = "Configures the highlight color of current destination"
+    )
+    default Color highlightDestinationColor()
+    {
+        return Color.GRAY;
+    }
+
+    @ConfigItem(
+            keyName = "highlightDestinationTile",
+            name = "Highlight destination tile",
+            description = "Highlights tile player is walking to"
+    )
+    default boolean highlightDestinationTile()
+    {
+        return true;
+    }
+
+    @Alpha
+    @ConfigItem(
+            keyName = "highlightHoveredColor",
+            name = "Color of current hovered highlighting",
+            description = "Configures the highlight color of hovered tile"
+    )
+    default Color highlightHoveredColor()
+    {
+        return new Color(0, 0, 0, 255);
+    }
+
+    @ConfigItem(
+            keyName = "highlightHoveredTile",
+            name = "Highlight hovered tile",
+            description = "Highlights tile player is hovering with mouse"
+    )
+    default boolean highlightHoveredTile()
+    {
+        return false;
+    }
+
+}
+
+
