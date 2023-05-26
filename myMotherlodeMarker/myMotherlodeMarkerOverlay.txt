@@ -1,0 +1,786 @@
+//BY BUTTBURGER 2023 GRANITE NODE GROUND AND INVENTORY MARKER
+//ORIGINALLY MEANT TO DO MOTHERLODE
+//PLUGINS BORROWED AND REARRANGED: groundmarkers, motherlode
+package net.runelite.client.plugins.myMotherlodeMarker;
+
+import java.awt.*;
+import javax.inject.Inject;
+
+import lombok.Getter;
+import net.runelite.api.*;
+import net.runelite.api.coords.LocalPoint;
+import net.runelite.api.coords.WorldPoint;
+import net.runelite.api.widgets.Widget;
+import net.runelite.api.widgets.WidgetInfo;
+import net.runelite.api.widgets.WidgetItem;
+import net.runelite.api.widgets.WidgetType;
+//import net.runelite.client.plugins.inventorytags.Tag;
+import net.runelite.client.plugins.myGroundMarkerFill.myGroundMarkerFillConfig;
+import net.runelite.client.ui.overlay.Overlay;
+import net.runelite.client.ui.overlay.OverlayLayer;
+import net.runelite.client.ui.overlay.OverlayPosition;
+import net.runelite.client.ui.overlay.OverlayPriority;
+import net.runelite.client.ui.overlay.OverlayUtil;
+import java.awt.image.BufferedImage;
+
+
+import java.awt.Color;
+import java.awt.Dimension;
+import java.awt.FontMetrics;
+import java.awt.Graphics2D;
+import java.awt.Point;
+import java.awt.Rectangle;
+import java.awt.image.BufferedImage;
+import java.util.Arrays;
+import java.util.concurrent.Future;
+import java.util.concurrent.ScheduledExecutorService;
+import javax.inject.Inject;
+import net.runelite.api.Client;
+import net.runelite.api.GameState;
+import net.runelite.api.InventoryID;
+import net.runelite.api.Item;
+import net.runelite.api.ItemContainer;
+
+
+import com.google.inject.Provides;
+
+import javax.annotation.Nullable;
+import javax.inject.Inject;
+
+
+import lombok.AllArgsConstructor;
+import lombok.Getter;
+import lombok.Value;
+import net.runelite.api.*;
+import net.runelite.api.events.ItemDespawned;
+import net.runelite.api.events.ItemSpawned;
+import net.runelite.client.events.ConfigChanged;
+import net.runelite.api.events.FocusChanged;
+
+import net.runelite.client.eventbus.Subscribe;
+import net.runelite.client.events.ConfigChanged;
+import net.runelite.client.game.AgilityShortcut;
+import net.runelite.client.game.WorldService;
+import net.runelite.client.plugins.Plugin;
+import net.runelite.client.plugins.PluginDescriptor;
+import net.runelite.client.config.ConfigManager;
+//import net.runelite.client.plugins.agility.Obstacle;
+import net.runelite.client.plugins.entityhider.EntityHiderConfig;
+import net.runelite.client.plugins.fps.FpsDrawListener;
+import net.runelite.client.util.WorldUtil;
+import net.runelite.http.api.worlds.World;
+import net.runelite.http.api.worlds.WorldResult;
+
+import com.google.inject.Provides;
+import javax.inject.Inject;
+import net.runelite.client.config.ConfigManager;
+import net.runelite.client.plugins.Plugin;
+import net.runelite.client.plugins.PluginDescriptor;
+import net.runelite.client.ui.overlay.OverlayManager;
+
+import java.awt.image.BufferedImage;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+
+
+import com.google.inject.Provides;
+import javax.inject.Inject;
+
+import lombok.Getter;
+import lombok.extern.slf4j.Slf4j;
+import net.runelite.api.Client;
+import net.runelite.api.ItemID;
+import net.runelite.api.Player;
+import net.runelite.api.TileItem;
+import net.runelite.api.MenuAction;
+import net.runelite.api.coords.WorldPoint;
+import net.runelite.api.events.GameStateChanged;
+import net.runelite.api.events.GameTick;
+import net.runelite.api.events.ItemDespawned;
+import net.runelite.api.events.ItemSpawned;
+import net.runelite.client.config.ConfigManager;
+import net.runelite.client.eventbus.Subscribe;
+import net.runelite.client.events.OverlayMenuClicked;
+import net.runelite.client.plugins.Plugin;
+import net.runelite.client.plugins.PluginDescriptor;
+import net.runelite.client.ui.overlay.OverlayManager;
+import net.runelite.client.ui.overlay.OverlayMenuEntry;
+
+import static net.runelite.api.ItemID.DODGY_NECKLACE;
+import static net.runelite.api.ItemID.RAW_SHARK;
+
+
+/*
+enum Courses {
+    GNOME(new WorldPoint(3755,5677, 0));
+
+    @Getter
+    private final WorldPoint[] courseEndWorldPoints;
+
+    Courses(WorldPoint... courseEndWorldPoints) {
+        this.courseEndWorldPoints = courseEndWorldPoints;
+    }
+}
+ */
+
+
+public class myMotherlodeMarkerOverlay extends Overlay
+{
+    private final Client client;
+    private final net.runelite.client.plugins.myMotherlodeMarker.myMotherlodeMarkerConfig config;
+
+    @Inject
+    private myMotherlodeMarkerOverlay(Client client, myMotherlodeMarkerConfig config)
+    {
+        this.client = client;
+        this.config = config;
+        //setPosition(OverlayPosition.DYNAMIC);
+        //setLayer(OverlayLayer.ABOVE_SCENE);
+        //setPriority(OverlayPriority.MED);
+
+        setPosition(OverlayPosition.DYNAMIC);
+        setLayer(OverlayLayer.ABOVE_WIDGETS);
+        setPriority(OverlayPriority.HIGH);
+    }
+
+
+    WorldPoint wp;
+    Player player;
+    int scanGrace;
+    LocalPoint localGrace;
+    int level2path;
+    int level3path;
+    int movedLevel;
+    int myX;
+    int myY;
+
+    int drawGranite;
+    int phaseGranite;
+    LocalPoint lGranite;
+    WorldPoint wGranite;
+
+    int my2Dx;
+    int my2Dy;
+    int my2Dwidth;
+    int my2Dheight;
+
+    void reloadScan(ItemSpawned itemSpawned)
+    {
+        final TileItem item = itemSpawned.getItem();
+        if (item.getId() == ItemID.MARK_OF_GRACE)
+        {
+            wp = itemSpawned.getTile().getWorldLocation();
+            player = client.getLocalPlayer();
+            if (player != null)
+            {
+                if (wp.equals(player.getWorldLocation()))
+                {
+                    //mogSession.addIgnoreTile(wp);
+                }
+                else
+                {
+                    //mogSession.addMarkTile(wp, item.getQuantity());
+                    //mSession.addMarkTest(wp);//DO_NOT_USE
+                    //reloadConfig();
+                    scanGrace = 1;
+                    localGrace = LocalPoint.fromWorld(client, wp);
+                }
+            }
+        }
+    }
+
+    void graceDespawned() {
+        scanGrace = 0;
+    }
+
+
+    void scanGraniteSpawn(LocalPoint graniteLP, int graniteValue) {
+        //final LocalPoint graniteR1 = LocalPoint.fromWorld(client, 3172,2903);
+        final LocalPoint lGraniteR1 = LocalPoint.fromWorld(client, 3172, 2903);
+        final LocalPoint lGraniteR2 = LocalPoint.fromWorld(client, 3172, 2902);
+        final LocalPoint lGraniteL1 = LocalPoint.fromWorld(client, 3168, 2903);
+        final LocalPoint lGraniteL2 = LocalPoint.fromWorld(client, 3168, 2904);
+
+        //START WITH R1, THEN R2, THEN L1, THEN L2, THEN LOOP
+        if(phaseGranite == 0) {//R1
+            if(graniteValue == 1 && graniteLP.equals(lGraniteR1)) {//VEINS
+                //drawGranite = 1;
+                lGranite = lGraniteR1;
+            }
+            if(graniteValue == 2 && graniteLP.equals(lGraniteR1)) {//DEPLETED
+                //drawGranite = 0;
+                phaseGranite = 1;
+                lGranite = lGraniteR2;
+            }
+        }
+        if(phaseGranite == 1) {//R2
+            if(graniteValue == 1 && graniteLP.equals(lGraniteR2)) {//VEINS
+                //drawGranite = 1;
+                lGranite = lGraniteR2;
+            }
+            if(graniteValue == 2 && graniteLP.equals(lGraniteR2)) {//DEPLETED
+                //drawGranite = 0;
+                phaseGranite = 2;
+                lGranite = lGraniteL1;
+            }
+        }
+
+        if(phaseGranite == 2) {//L1
+            if(graniteValue == 1 && graniteLP.equals(lGraniteL1)) {//VEINS
+                //drawGranite = 1;
+                lGranite = lGraniteL1;
+            }
+            if(graniteValue == 2 && graniteLP.equals(lGraniteL1)) {//DEPLETED
+                //drawGranite = 0;
+                phaseGranite = 3;
+                lGranite = lGraniteL2;
+            }
+        }
+
+        if(phaseGranite == 3) {//L2
+            if(graniteValue == 1 && graniteLP.equals(lGraniteL2)) {//VEINS
+                //drawGranite = 1;
+                lGranite = lGraniteL2;
+            }
+            if(graniteValue == 2 && graniteLP.equals(lGraniteL2)) {//DEPLETED
+                //drawGranite = 0;
+                phaseGranite = 0;
+                lGranite = lGraniteR1;
+            }
+        }
+    }
+
+
+    /*
+    void scanGraniteDespawn(WorldPoint wp) {
+        drawGranite = 0;
+    }
+     */
+
+
+    int myStuff;
+    void rescanWallNode(WorldPoint wp, int scanValue) {
+        final LocalPoint myTest = LocalPoint.fromWorld(client, wp);
+        final LocalPoint nodeR1 = LocalPoint.fromWorld(client, 3755,5677);
+        final LocalPoint nodeR2 = LocalPoint.fromWorld(client, 3758,5675);
+        final LocalPoint nodeR3 = LocalPoint.fromWorld(client, 3759,5674);
+        final LocalPoint nodeR4 = LocalPoint.fromWorld(client, 3760,5674);
+        final LocalPoint nodeR5 = LocalPoint.fromWorld(client, 3761,5674);
+        final LocalPoint nodeR6 = LocalPoint.fromWorld(client, 3762,5673);
+        final LocalPoint nodeR7 = LocalPoint.fromWorld(client, 3762,5672);
+        final LocalPoint nodeR8 = LocalPoint.fromWorld(client, 3762,5671);
+        final LocalPoint nodeR9 = LocalPoint.fromWorld(client, 3762,5670);
+
+        final LocalPoint nodeL1 = LocalPoint.fromWorld(client, 3754,5678);
+        final LocalPoint nodeL2 = LocalPoint.fromWorld(client, 3751,5680);
+        final LocalPoint nodeL3 = LocalPoint.fromWorld(client, 3751,5681);
+        final LocalPoint nodeL4 = LocalPoint.fromWorld(client, 3753,5680);
+        final LocalPoint nodeL5 = LocalPoint.fromWorld(client, 3754,5682);
+        final LocalPoint nodeL6 = LocalPoint.fromWorld(client, 3754,5683);
+        final LocalPoint nodeL7 = LocalPoint.fromWorld(client, 3753,5684);
+        final LocalPoint nodeL8 = LocalPoint.fromWorld(client, 3752,5684);
+        final LocalPoint nodeL9 = LocalPoint.fromWorld(client, 3750,5682);
+        final LocalPoint nodeL10 = LocalPoint.fromWorld(client, 3749,5682);
+        final LocalPoint nodeL11 = LocalPoint.fromWorld(client, 3748,5682);
+    }
+
+
+    /*
+    void rescanWallNode2(WorldPoint wp) {
+        final LocalPoint nodeR1 = LocalPoint.fromWorld(client, 3755,5677);
+        final LocalPoint myTest = LocalPoint.fromWorld(client, wp);
+        //if(myTest.equals(Courses.GNOME)) {
+        if(myTest.equals(nodeR1)) {
+            //myStuff = 0;
+        }
+    }
+
+    void despawnedWallNode(WorldPoint wp) {
+        final LocalPoint nodeR1 = LocalPoint.fromWorld(client, 3755,5677);
+        if(wp.equals(nodeR1)) {
+            myStuff = 0;
+        }
+    }
+     */
+
+
+    @Override
+    public Dimension render(Graphics2D graphics)
+    {
+        //final LocalPoint scanPos = LocalPoint.fromWorld(client, wp);//PROBLEM
+        final WorldPoint playerPos = client.getLocalPlayer().getWorldLocation();
+        final LocalPoint myPos = LocalPoint.fromWorld(client, playerPos);
+
+        //myX = myPos.getX();
+        //myY = myPos.getY();
+
+        final LocalPoint hopper = LocalPoint.fromWorld(client, 3748,5672);
+        final LocalPoint testLowLevel = LocalPoint.fromWorld(client, 3755,5675);
+        final LocalPoint testUpperLevel = LocalPoint.fromWorld(client, 3755,5672);
+
+
+        //if(myStuff == 1) {
+            //renderTile(graphics, hopper, config.highlightDestinationColor(), 2, config.highlightHoveredColor());
+        //}
+
+        //renderTile(graphics, LocalPoint.fromWorld(client,3170,2902), config.highlightDestinationColor(), 2, config.highlightHoveredColor());
+        //renderTile(graphics, lGranite, config.highlightDestinationColor(), 2, config.highlightHoveredColor());
+
+
+        //OverlayUtil.renderImageLocation(graphics, new net.runelite.api.Point(100, 100), arrow);
+        //render2D(graphics, config.highlightHoveredColor());
+
+
+        /*
+        //2D MENU HIGHLIGHTER
+        final MenuEntry[] menuEntries = client.getMenuEntries();
+        if (client.isMenuOpen() || menuEntries.length == 0)
+        {
+            //plugin.setSelectedWidgetBounds(null);
+            return null;
+        }
+
+        final MenuEntry menuEntry = menuEntries[menuEntries.length - 1];
+        final int childIdx = menuEntry.getParam0();
+        final int widgetId = menuEntry.getParam1();
+        final int groupId = WidgetInfo.TO_GROUP(widgetId);
+        final int componentId = WidgetInfo.TO_CHILD(widgetId);
+
+        final Widget widget = client.getWidget(groupId, componentId);
+        if (widget == null)
+        {
+            //plugin.setSelectedWidgetBounds(null);
+            return null;
+        }
+
+        Rectangle bounds = null;
+        if (childIdx > -1)
+        {
+            if (widget.getType() == WidgetType.INVENTORY)
+            {
+                final WidgetItem widgetItem = widget.getWidgetItem(childIdx);
+                if (widgetItem != null)
+                {
+                    bounds = widgetItem.getCanvasBounds();
+                }
+            }
+            else
+            {
+                    final Widget child = widget.getChild(childIdx);
+                if (child != null)
+                {
+                    bounds = child.getBounds();
+                }
+            }
+        }
+        else
+        {
+            bounds = widget.getBounds();
+        }
+        if (bounds == null)
+        {
+            //plugin.setSelectedWidgetBounds(null);
+            return null;
+        }
+         */
+
+        /*
+        //drawHighlight(graphics, bounds);
+        //plugin.setSelectedWidgetBounds(bounds);
+
+        //my2Dx = widget.getOriginalX();
+        //my2Dy = widget.getOriginalY();
+        //my2Dx = widget.getRelativeX();
+        //my2Dy = widget.getRelativeY();
+        //my2Dx = widget.getChild(0).getRelativeX();
+        //my2Dy = widget.getChild(0).getRelativeY();
+        //my2Dx = widget.getXPositionMode();
+        //my2Dy = widget.getYPositionMode();
+        //my2Dx = widget.getScrollX();
+        //my2Dy = widget.getScrollY();
+        //my2Dx = widget.getXTextAlignment();
+        //my2Dy = widget.getYTextAlignment();
+
+
+        //my2Dwidth = widget.getWidth();
+        //my2Dheight = widget.getHeight();
+        //MENU HIGHLIGHT USE FOR BAG SLOTS
+        //my2Dwidth = widget.getChild(0).getWidth();
+        //my2Dheight = widget.getChild(0).getHeight();
+         */
+
+        /*
+        if(widget.getChild(0).getId() == RAW_SHARK) {
+            my2Dwidth = widget.getWidth();
+            my2Dheight = widget.getHeight();
+            render2Daaa(graphics, config.highlightHoveredColor(), bounds);
+        }
+
+        if(widget.getChild(1).getId() == RAW_SHARK) {
+            my2Dwidth = widget.getWidth();
+            my2Dheight = widget.getHeight();
+            render2Daaa(graphics, config.highlightHoveredColor(), bounds);
+        }
+        */
+
+        /*
+        //WidgetItem item;
+        if (item.getId() == ItemID.DODGY_NECKLACE) {
+            ItemWithCharge chargeItem = ItemWithCharge.findItem(item.getId());
+        }
+        if (chargeItem == null) {
+            final Rectangle boundsz = item.getCanvasBounds();
+            final TextComponent textComponent = new TextComponent();
+            textComponent.setPosition(new Point(boundsz.x, boundsz.y + 16));
+        }
+        //final Widget inventoryWidget = client.getWidget(0, 0);
+        //Rectangle b = inventoryWidget.getBounds();
+        //render2Daaa(graphics, config.highlightHoveredColor(), b);
+         */
+
+
+
+
+
+        //4,768
+        //27,529
+        int invSlot = 0;
+        int splitCounterX = 0;
+        int splitCounterY = 0;
+        //int split4 = 0;
+        ItemContainer container = client.getItemContainer(InventoryID.INVENTORY);
+        for (Item item : container.getItems())
+        {
+            //if(item.equals(container.getItem(0))) {
+            //if(item.equals(container.getItem(11))) {
+            if(item.equals(container.getItem(invSlot)))
+            {
+                //if(item.getId() == ItemID.DODGY_NECKLACE)
+                if(item.getId() == ItemID.GRANITE_500G || item.getId() == ItemID.GRANITE_2KG || item.getId() == ItemID.GRANITE_5KG)//HIGHLIGHT_ALL
+                {
+                    drawGranite = 0;
+                    //DRAW GRID HERE
+                    int tempSpacingX = splitCounterX * 10;//8,12
+                    int tempSpacingY = splitCounterY * 36;
+                    //INVENTORY PARENT START POS 570,241
+                    my2Dx = 570 + (splitCounterX * 32) + tempSpacingX;
+                    my2Dy = 214 + tempSpacingY;
+                    //SPRITE SIZE 32
+                    my2Dwidth = 32;
+                    my2Dheight = 32;
+                    render2D(graphics, config.highlightHoveredColor());
+                    graphics.fillRect(my2Dx, my2Dy, my2Dwidth, my2Dheight);
+                    //Rectangle bounds = wItem.getCanvasBounds();
+                    //render2Daaa(graphics, config.highlightHoveredColor(), bounds);
+                    //bbb = 1;
+                    //graphics.setColor(config.highlightHoveredColor());
+                    //graphics.drawLine((int) 5, 5, 500, 10);
+                    //graphics.drawLine((int) bounds.getX(), heightOffSet, (int) bounds.getX() + (int) bounds.getWidth(), heightOffSet);
+                }
+                /*
+                if(item.getId() == ItemID.GRANITE_500G || item.getId() == ItemID.GRANITE_2KG || item.getId() == ItemID.GRANITE_5KG)
+                {
+                    if(invSlot == 11)
+                    {
+                        drawGranite = 0;
+                        for(int tempX = 0, tempY = 0, tempSplit = 0; tempSplit < 3; tempX++)
+                        {
+                            if(tempX == 4) {
+                                tempX = 0;
+                                tempY++;
+                                tempSplit++;
+                            }
+                            if(tempSplit < 3) {
+                                int tempSpaceX = tempX * 10;//8,12
+                                int tempSpaceY = tempY * 36;
+                                //INVENTORY PARENT START POS 570,241
+                                my2Dx = 570 + (tempX * 32) + tempSpaceX;
+                                my2Dy = 214 + tempSpaceY;
+                                //SPRITE SIZE 32
+                                my2Dwidth = 32;
+                                my2Dheight = 32;
+                                render2D(graphics, config.highlightHoveredColor());
+                                graphics.fillRect(my2Dx, my2Dy, my2Dwidth, my2Dheight);
+                            }
+                        }
+                    }
+                    //else {
+                    //else if(invSlot != 11) {
+                    //else if(drawGranite == 1) {
+                    //else if(drawGranite == 1 && invSlot != 11) {
+                        //renderTile(graphics, lGranite, config.highlightDestinationColor(), 2, config.highlightHoveredColor());
+                        //drawGranite = 1;
+                    //}
+                    //renderTile(graphics, lGranite, config.highlightDestinationColor(), 2, config.highlightHoveredColor());
+                }
+                 */
+            }
+            invSlot++;
+            splitCounterX++;
+            if(splitCounterX == 4) {
+                splitCounterX = 0;
+                splitCounterY++;
+                //split4++;
+                if(splitCounterY == 7) {
+                    splitCounterY = 0;
+                }
+            }
+            //else {
+                //bbb = 0;
+            //}
+        }
+
+        //if(drawGranite == 1) {
+            //renderTile(graphics, lGranite, config.highlightDestinationColor(), 2, config.highlightHoveredColor());
+        //}
+        renderTile(graphics, lGranite, config.highlightDestinationColor(), 2, config.highlightHoveredColor());
+
+
+        /*
+        inventoryWidget = client.getWidget(WidgetInfo.INVENTORY);
+        for(WidgetItem wItem : inventoryWidget.getWidgetItems())
+        {
+            if(wItem.getId() == ItemID.DODGY_NECKLACE) {
+                final Rectangle gc = wItem.getCanvasBounds();
+                render2Daaa(graphics, config.highlightHoveredColor(), gc);
+                final Rectangle gb = inventoryWidget.getBounds();
+                render2Daaa(graphics, config.highlightHoveredColor(), gb);
+
+                bbb = 1;
+            }
+        }
+        if(bbb == 1) {
+            graphics.setColor(config.highlightHoveredColor());
+            graphics.drawLine(5, 5, 500, 10);
+            //graphics.drawLine((int) bounds.getX(), heightOffSet, (int) bounds.getX() + (int) bounds.getWidth(), heightOffSet);
+        }
+         */
+
+        /*
+        //WidgetType.INVENTORY
+        inventoryWidget = client.getWidget(WidgetInfo.INVENTORY);
+        for (WidgetItem item : inventoryWidget.getWidgetItems())
+        {
+            if(item.getId() == ItemID.DODGY_NECKLACE) {
+                final Rectangle boundz = item.getCanvasBounds();
+                render2Daaa(graphics, config.highlightHoveredColor(), boundz);
+            }
+
+            //Rectangle slotBounds = item.getCanvasBounds();
+            //String idText = "" + item.getId();
+            //FontMetrics fm = graphics.getFontMetrics();
+            //Rectangle2D textBounds = fm.getStringBounds(idText, graphics);
+            //int textX = (int) (slotBounds.getX() + (slotBounds.getWidth() / 2) - (textBounds.getWidth() / 2));
+            //int textY = (int) (slotBounds.getY() + (slotBounds.getHeight() / 2) + (textBounds.getHeight() / 2));
+
+            //render2Daaa(graphics, config.highlightHoveredColor(), slotBounds);
+            //render2Daaa(graphics, config.highlightHoveredColor(), testBounds);
+
+            //graphics.setColor(new Color(255, 255, 255, 65));
+            //graphics.fill(slotBounds);
+            //graphics.setColor(Color.BLACK);
+
+            //graphics.drawString(idText, textX + 1, textY + 1);
+            //graphics.setColor(YELLOW);
+            //graphics.drawString(idText, textX, textY);
+        }
+         */
+
+        /*
+        //if (widget.getType() == WidgetType.INVENTORY) {
+            final WidgetItem widgetItem = widget.getWidgetItem(0);
+            Rectangle testBounds1;// = widgetItem.getCanvasBounds();
+            final WidgetItem widgetItem2 = widget.getWidgetItem(1);
+            Rectangle testBounds2;// = widgetItem.getCanvasBounds();
+            if (widgetItem != null)
+            {
+                testBounds1 = widgetItem.getCanvasBounds();
+                my2Dwidth = widget.getWidth();
+                my2Dheight = widget.getHeight();
+                render2Daaa(graphics, config.highlightHoveredColor(), testBounds1);
+            }
+            if (widgetItem2 != null)
+            {
+                testBounds2 = widgetItem.getCanvasBounds();
+                my2Dwidth = widget.getWidth();
+                my2Dheight = widget.getHeight();
+                render2Daaa(graphics, config.highlightHoveredColor(), testBounds2);
+            }
+        //}
+        //else {
+            final Widget child1 = widget.getChild(0);
+            Rectangle cBound1;
+            final WidgetItem w1 = child1.getWidgetItem(0);
+
+            final Widget child2 = widget.getChild(1);
+            Rectangle cBound2;
+            final WidgetItem w2 = child2.getWidgetItem(1);
+
+            if (child1 != null)
+            {
+                //cBound1 = w1.getCanvasBounds();
+                cBound1 = child1.getBounds();
+                render2Daaa(graphics, config.highlightHoveredColor(), cBound1);
+            }
+            if (child2 != null)
+            {
+                //cBound2 = w2.getCanvasBounds();
+                cBound2 = child2.getBounds();
+                render2Daaa(graphics, config.highlightHoveredColor(), cBound2);
+            }
+        //}
+
+        if(iContainer.contains(ItemID.RAW_SHARK)) {
+            final Rectangle boundsz = item.getCanvasBounds();
+            //my2Dwidth = widget.getWidth();
+            //my2Dheight = widget.getHeight();
+            my2Dwidth = 50;
+            my2Dheight = 50;
+            render2Daaa(graphics, config.highlightHoveredColor(), boundsz);
+        }
+         */
+
+        /*
+        //movedLevel
+        if(playerPos.getPlane() == 0) {
+            movedLevel = 0;
+        }
+        if(playerPos.getPlane() == 1) {
+            movedLevel = 1;
+        }
+        if(playerPos.getPlane() == 2) {
+            movedLevel = 1;
+        }
+        if(playerPos.getPlane() == 3 && movedLevel == 1) {
+            movedLevel = 2;
+        }
+        if(playerPos.getPlane() == 2 && movedLevel == 2) {
+            movedLevel = 0;
+        }
+
+        //START WALL
+        if(playerPos.getPlane() == 0 && !myPos.equals(path1)) {
+            renderTile(graphics, LocalPoint.fromWorld(client, 2729, 3489), config.highlightDestinationColor(), 2, config.highlightHoveredColor());
+        }
+        if(playerPos.getPlane() == 3 && myPos.equals(path2)) {
+            level3path = 1;
+        }
+        else if(playerPos.getPlane() == 3 && myPos.equals(path5)) {
+            level3path = 2;
+        }
+        //ROOF1
+        if(playerPos.getPlane() == 3 && level3path == 1) {
+            if(scanGrace == 1 && localGrace.equals(grace1)) {
+                LocalPoint scanPos1 = LocalPoint.fromWorld(client, wp);
+                //if(myPos.getX() > 2727) {//PROBLEM
+                //if(scanPos1.distanceTo(myPos) >= 5 && myX > 2727) {
+                //if(scanPos1.distanceTo(myPos) >= 5) {
+                renderTile(graphics, scanPos1, config.highlightDestinationColor(), 2, config.highlightHoveredColor());
+            }
+            //movedLevel
+            //else {//if(!myPos.equals(path2)) {
+            else if(movedLevel == 0) {
+                renderTile(graphics, LocalPoint.fromWorld(client, 2720, 3494), config.highlightDestinationColor(), 2, config.highlightHoveredColor());
+            }//TARGET2
+        }
+        if(playerPos.getPlane() == 2 && myPos.equals(path3)) {
+            level2path = 1;
+        }
+        else if(playerPos.getPlane() == 2 && myPos.equals(path4)) {
+            level2path = 2;
+        }
+        else if(playerPos.getPlane() == 2 && myPos.equals(path6)) {
+            level2path = 3;
+        }
+        //ROOF2
+        if(playerPos.getPlane() == 2 && level2path == 1) {
+            if(scanGrace == 1 && localGrace.equals(grace2)) {
+                //if (scanGrace == 1) {
+                LocalPoint scanPos2 = LocalPoint.fromWorld(client, wp);
+                //if(scanPos2.distanceTo(myPos) >= 5 && myY > 3489) {
+                //if(scanPos2.distanceTo(myPos) >= 5) {
+                renderTile(graphics, scanPos2, config.highlightDestinationColor(), 2, config.highlightHoveredColor());
+            }
+            if(scanGrace == 1 && localGrace.equals(grace3)) {
+                LocalPoint scanPos2 = LocalPoint.fromWorld(client, wp);
+                renderTile(graphics, scanPos2, config.highlightDestinationColor(), 2, config.highlightHoveredColor());
+            }
+            else {//if(!myPos.equals(path3)) {
+                renderTile(graphics, LocalPoint.fromWorld(client, 2710, 3489), config.highlightDestinationColor(), 2, config.highlightHoveredColor());
+            }//TARGET3
+        }
+        //ROOF3(Tightrope)
+        if(playerPos.getPlane() == 2 && level2path == 2) {
+            if(scanGrace == 1 && localGrace.equals(grace4)) {
+                LocalPoint scanPos3 = LocalPoint.fromWorld(client, wp);
+                //if(myY < 3481) {
+                //if(scanPos3.distanceTo(myPos) >= 5 && myY < 3481) {
+                //if(scanPos3.distanceTo(myPos) >= 5) {
+                renderTile(graphics, scanPos3, config.highlightDestinationColor(), 2, config.highlightHoveredColor());
+            }
+            else {//if(!myPos.equals(path4)) {
+                renderTile(graphics, LocalPoint.fromWorld(client, 2710, 3476), config.highlightDestinationColor(), 2, config.highlightHoveredColor());
+            }//TARGET4
+        }
+        //ROOF4(Jump)
+        if(playerPos.getPlane() == 3 && level3path == 2 || movedLevel == 2) {
+            renderTile(graphics, LocalPoint.fromWorld(client, 2702, 3469), config.highlightDestinationColor(), 2, config.highlightHoveredColor());
+        }//TARGET5
+        //ROOF5
+        if(playerPos.getPlane() == 2 && level2path == 3) {
+            if(scanGrace == 1) {
+                LocalPoint scanPos4 = LocalPoint.fromWorld(client, wp);
+                renderTile(graphics, scanPos4, config.highlightDestinationColor(), 2, config.highlightHoveredColor());
+            }
+            else {//if(!myPos.equals(path6)) {
+                renderTile(graphics, LocalPoint.fromWorld(client, 2703, 3464), config.highlightDestinationColor(), 2, config.highlightHoveredColor());
+            }//TARGET6
+        }
+        */
+
+        return null;
+    }
+
+
+    private void render2D(Graphics2D graphics, final Color fillColor)
+    {
+        graphics.setColor(fillColor);
+        graphics.fillRect(my2Dx, my2Dy, my2Dwidth, my2Dheight);
+        //graphics.fillRect(350, 50, 200, 200);
+    }
+
+    private void render2Daaa(Graphics2D graphics, final Color fillColor, Rectangle bounds)
+    {
+        graphics.setColor(fillColor);
+        graphics.draw(bounds);
+
+        graphics.fillRect(700, 550, 100, 100);
+        //graphics.fillRect(bounds.x, bounds.y, 30, 30);
+
+        //graphics.fillRect(bounds.x, bounds.y, 30, 30);
+        //graphics.fillRect(bounds.x, bounds.y, my2Dwidth, my2Dheight);
+        //graphics.fillRect(5, 5, my2Dwidth, my2Dheight);
+    }
+
+    private void renderTile(final Graphics2D graphics, final LocalPoint dest, final Color color, final double borderWidth, final Color fillColor)
+    {
+        if (dest == null)
+        {
+            return;
+        }
+
+        final Polygon poly = Perspective.getCanvasTilePoly(client, dest);
+
+        if (poly == null)
+        {
+            return;
+        }
+
+        //OverlayUtil.renderPolygon(graphics, poly, color);
+        OverlayUtil.renderPolygon(graphics, poly, color, fillColor, new BasicStroke((float) borderWidth));
+    }
+}
+
