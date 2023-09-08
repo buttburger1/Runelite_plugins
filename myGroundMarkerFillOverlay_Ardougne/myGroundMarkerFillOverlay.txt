@@ -1,0 +1,267 @@
+//BY BUTTBURGER 9/08/2023 MARKER FILL FOR AGILITY ARDOUGNE COURSE
+//PLUGINS BORROWED AND REARRANGED: agility, groundmarkers
+package net.runelite.client.plugins.myGroundMarkerFill;
+
+
+import java.awt.*;
+import javax.inject.Inject;
+
+import lombok.Getter;
+import net.runelite.api.*;
+import net.runelite.api.coords.LocalPoint;
+import net.runelite.api.coords.WorldPoint;
+import net.runelite.client.ui.overlay.Overlay;
+import net.runelite.client.ui.overlay.OverlayLayer;
+import net.runelite.client.ui.overlay.OverlayPosition;
+import net.runelite.client.ui.overlay.OverlayPriority;
+import net.runelite.client.ui.overlay.OverlayUtil;
+
+
+
+import com.google.inject.Provides;
+
+import javax.annotation.Nullable;
+import javax.inject.Inject;
+
+
+import lombok.AllArgsConstructor;
+import lombok.Getter;
+import lombok.Value;
+import net.runelite.api.*;
+import net.runelite.api.events.ItemDespawned;
+import net.runelite.api.events.ItemSpawned;
+import net.runelite.client.events.ConfigChanged;
+import net.runelite.api.events.FocusChanged;
+
+import net.runelite.client.eventbus.Subscribe;
+import net.runelite.client.events.ConfigChanged;
+import net.runelite.client.game.AgilityShortcut;
+import net.runelite.client.game.WorldService;
+import net.runelite.client.plugins.Plugin;
+import net.runelite.client.plugins.PluginDescriptor;
+import net.runelite.client.config.ConfigManager;
+//import net.runelite.client.plugins.agility.Obstacle;
+import net.runelite.client.plugins.entityhider.EntityHiderConfig;
+import net.runelite.client.plugins.fps.FpsDrawListener;
+import net.runelite.client.util.WorldUtil;
+import net.runelite.http.api.worlds.World;
+import net.runelite.http.api.worlds.WorldResult;
+
+import com.google.inject.Provides;
+import javax.inject.Inject;
+import net.runelite.client.config.ConfigManager;
+import net.runelite.client.plugins.Plugin;
+import net.runelite.client.plugins.PluginDescriptor;
+import net.runelite.client.ui.overlay.OverlayManager;
+
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+
+
+import com.google.inject.Provides;
+import javax.inject.Inject;
+
+import lombok.Getter;
+import lombok.extern.slf4j.Slf4j;
+import net.runelite.api.Client;
+import net.runelite.api.ItemID;
+import net.runelite.api.Player;
+import net.runelite.api.TileItem;
+import net.runelite.api.MenuAction;
+import net.runelite.api.coords.WorldPoint;
+import net.runelite.api.events.GameStateChanged;
+import net.runelite.api.events.GameTick;
+import net.runelite.api.events.ItemDespawned;
+import net.runelite.api.events.ItemSpawned;
+import net.runelite.client.config.ConfigManager;
+import net.runelite.client.eventbus.Subscribe;
+import net.runelite.client.events.OverlayMenuClicked;
+import net.runelite.client.plugins.Plugin;
+import net.runelite.client.plugins.PluginDescriptor;
+import net.runelite.client.ui.overlay.OverlayManager;
+import net.runelite.client.ui.overlay.OverlayMenuEntry;
+
+
+
+public class myGroundMarkerFillOverlay extends Overlay
+{
+    private final Client client;
+    private final myGroundMarkerFillConfig config;
+
+    @Inject
+    private myGroundMarkerFillOverlay(Client client, myGroundMarkerFillConfig config)
+    {
+        this.client = client;
+        this.config = config;
+        setPosition(OverlayPosition.DYNAMIC);
+        setLayer(OverlayLayer.ABOVE_SCENE);
+        setPriority(OverlayPriority.MED);
+    }
+
+
+    WorldPoint wp;
+    Player player;
+    int scanGrace;
+    LocalPoint localGrace;
+    int level2path;
+    int level3path;
+    int movedLevel;
+    int myX;
+    int myY;
+    LocalPoint movePoint;
+
+    void reloadScan(ItemSpawned itemSpawned)
+    {
+        final TileItem item = itemSpawned.getItem();
+        if (item.getId() == ItemID.MARK_OF_GRACE)
+        {
+            wp = itemSpawned.getTile().getWorldLocation();
+            player = client.getLocalPlayer();
+            if (player != null)
+            {
+                if (wp.equals(player.getWorldLocation()))
+                {
+                    //mogSession.addIgnoreTile(wp);
+                }
+                else
+                {
+                    //mogSession.addMarkTile(wp, item.getQuantity());
+                    //mSession.addMarkTest(wp);//DO_NOT_USE
+                    //reloadConfig();
+                    scanGrace = 1;
+                    localGrace = LocalPoint.fromWorld(client, wp);
+                }
+            }
+        }
+    }
+
+
+    void graceDespawned()
+    {
+        scanGrace = 0;
+    }
+
+
+
+    @Override
+    public Dimension render(Graphics2D graphics)
+    {
+        final WorldPoint playerPos = client.getLocalPlayer().getWorldLocation();
+        final LocalPoint myPos = LocalPoint.fromWorld(client, playerPos);
+
+        myX = myPos.getX();
+        myY = myPos.getY();
+
+        //SEERS
+        final LocalPoint path1 = LocalPoint.fromWorld(client, 2729,3488);
+        final LocalPoint path2 = LocalPoint.fromWorld(client, 2729,3491);
+        final LocalPoint path3 = LocalPoint.fromWorld(client, 2713,3494);
+        final LocalPoint path4 = LocalPoint.fromWorld(client, 2710,3480);
+        final LocalPoint path5 = LocalPoint.fromWorld(client, 2710,3472);
+        final LocalPoint path6 = LocalPoint.fromWorld(client, 2702,3465);
+        final LocalPoint targetPos1 = LocalPoint.fromWorld(client, 2729,3489);
+
+        //ARDOUGNE
+        final LocalPoint pathArdougne1 = LocalPoint.fromWorld(client, 2671,3299);
+        final LocalPoint pathArdougne2 = LocalPoint.fromWorld(client, 2665,3318);
+
+        final LocalPoint pathArdougne3a = LocalPoint.fromWorld(client, 2662,3318);
+        final LocalPoint pathArdougne3b = LocalPoint.fromWorld(client, 2656,3318);
+
+        final LocalPoint pathArdougne4 = LocalPoint.fromWorld(client, 2653,3314);
+        final LocalPoint pathArdougne5 = LocalPoint.fromWorld(client, 2651,3309);
+        final LocalPoint pathArdougne6 = LocalPoint.fromWorld(client, 2656,3297);
+
+        //SEERS
+        final LocalPoint grace1 = LocalPoint.fromWorld(client, 2727,3493);
+        final LocalPoint grace2 = LocalPoint.fromWorld(client, 2709,3493);
+        final LocalPoint grace3 = LocalPoint.fromWorld(client, 2706,3493);
+        final LocalPoint grace4 = LocalPoint.fromWorld(client, 2712,3481);
+        final LocalPoint grace5 = LocalPoint.fromWorld(client, 2698,3465);
+
+        //ARDOUGNE
+        final LocalPoint graceArdougne3 = LocalPoint.fromWorld(client, 2657,3318);
+
+        //START WALL
+        if(playerPos.getPlane() == 0) {
+            renderTile(graphics, LocalPoint.fromWorld(client, 2673, 3298), config.highlightDestinationColor(), 2, config.highlightHoveredColor());//ARDOUGNE
+        }
+
+        if(playerPos.getPlane() == 3)
+        {
+            if(myPos.equals(pathArdougne1))
+            {
+                //renderTile(graphics, LocalPoint.fromWorld(client, 2671, 3310), config.highlightDestinationColor(), 2, config.highlightHoveredColor());
+                movePoint = LocalPoint.fromWorld(client, 2671, 3310);
+            }
+            else if(myPos.equals(pathArdougne2))
+            {
+                //renderTile(graphics, LocalPoint.fromWorld(client, 2661, 3318), config.highlightDestinationColor(), 2, config.highlightHoveredColor());
+                movePoint = LocalPoint.fromWorld(client, 2661, 3318);
+            }
+
+
+            else if(myPos.equals(pathArdougne3a))
+            {
+                movePoint = LocalPoint.fromWorld(client, 2653, 3318);
+                //renderTile(graphics, LocalPoint.fromWorld(client, 2653, 3318), config.highlightDestinationColor(), 2, config.highlightHoveredColor());
+                if(localGrace.equals(graceArdougne3) && scanGrace == 1)
+                {
+                    movePoint = LocalPoint.fromWorld(client, 2657, 3318);
+                    renderTile(graphics, LocalPoint.fromWorld(client, 2657, 3318), config.highlightDestinationColor(), 2, config.highlightDestinationColor());
+                }
+            }
+            else if(myPos.equals(pathArdougne3b))
+            {
+                if(scanGrace == 0)
+                {
+                    movePoint = LocalPoint.fromWorld(client, 2653, 3318);
+                    //renderTile(graphics, LocalPoint.fromWorld(client, 2657, 3318), Color.RED, 2, Color.RED);
+                }
+            }
+
+
+            else if(myPos.equals(pathArdougne4))
+            {
+                //renderTile(graphics, LocalPoint.fromWorld(client, 2653, 3309), config.highlightDestinationColor(), 2, config.highlightHoveredColor());
+                movePoint = LocalPoint.fromWorld(client, 2653, 3309);
+            }
+            else if(myPos.equals(pathArdougne5))
+            {
+                //renderTile(graphics, LocalPoint.fromWorld(client, 2654, 3300), config.highlightDestinationColor(), 2, config.highlightHoveredColor());
+                movePoint = LocalPoint.fromWorld(client, 2654, 3300);
+            }
+            else if(myPos.equals(pathArdougne6))
+            {
+                //renderTile(graphics, LocalPoint.fromWorld(client, 2657, 3296), config.highlightDestinationColor(), 2, config.highlightHoveredColor());
+                movePoint = LocalPoint.fromWorld(client, 2657, 3296);
+            }
+
+            renderTile(graphics, movePoint, config.highlightDestinationColor(), 2, config.highlightHoveredColor());
+        }
+
+        return null;
+    }
+
+    private void renderTile(final Graphics2D graphics, final LocalPoint dest, final Color color, final double borderWidth, final Color fillColor)
+    {
+        if (dest == null)
+        {
+            return;
+        }
+
+        final Polygon poly = Perspective.getCanvasTilePoly(client, dest);
+
+        if (poly == null)
+        {
+            return;
+        }
+
+        //OverlayUtil.renderPolygon(graphics, poly, color);
+        OverlayUtil.renderPolygon(graphics, poly, color, fillColor, new BasicStroke((float) borderWidth));
+    }
+}
+
